@@ -1,11 +1,11 @@
-/** 
+/**
  * This code is a porting of the work from the Centro E. Piaggio in Pisa : https://github.com/CentroEPiaggio/kuka-lwr
  * for the LBR IIWA. We acknowledge the good work of their main contributors :
  * Carlos J. Rosales - cjrosales@gmail.com
  * Enrico Corvaglia
  * Marco Esposito - marco.esposito@tum.de
  * Manuel Bonilla - josemanuelbonilla@gmail.com
- * 
+ *
  * LICENSE :
  * Copyright (C) 2016-2017 Salvatore Virga - salvo.virga@tum.de, Marco Esposito - marco.esposito@tum.de
  * Technische Universität München
@@ -46,32 +46,32 @@ void quitRequested(int sig) {
 int main( int argc, char** argv ) {
     // initialize ROS
     ros::init(argc, argv, "iiwa_hw", ros::init_options::NoSigintHandler);
-    
+
     // ros spinner
     ros::AsyncSpinner spinner(1);
     spinner.start();
-    
+
     // custom signal handlers
     signal(SIGTERM, quitRequested);
     signal(SIGINT, quitRequested);
     signal(SIGHUP, quitRequested);
-    
+
     // construct the lbr iiwa
     ros::NodeHandle iiwa_nh;
-    IIWA_HW iiwa_robot(iiwa_nh);
-    
+    IIWA_HW iiwa_robot;
     // configuration routines
-    iiwa_robot.start();
-    
+    iiwa_robot.init(iiwa_nh, iiwa_nh);
+
+
     // timer variables
     struct timespec ts = {0, 0};
     ros::Time last(ts.tv_sec, ts.tv_nsec), now(ts.tv_sec, ts.tv_nsec);
     ros::Duration period(1.0);
-    
+
     //the controller manager
     controller_manager::ControllerManager manager(&iiwa_robot, iiwa_nh);
-    
-    
+
+
     // run as fast as possible
     while( !g_quit ) {
         // get the time / period
@@ -83,26 +83,26 @@ int main( int argc, char** argv ) {
         } else {
             ROS_FATAL("Failed to poll realtime clock!");
             break;
-        } 
-        
+        }
+
         // read current robot position
-        iiwa_robot.read(period);
-        
+        iiwa_robot.read(now, period);
+
         // update the controllers
         manager.update(now, period);
-        
+
         // send command position to the robot
-        iiwa_robot.write(period);
-        
+        iiwa_robot.write(now, period);
+
         // wait for some milliseconds defined in controlFrequency
         iiwa_robot.getRate()->sleep();
-        
+
     }
-    
+
     std::cerr << "Stopping spinner..." << std::endl;
     spinner.stop();
-    
+
     std::cerr << "Bye!" << std::endl;
-    
+
     return 0;
 }
